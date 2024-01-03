@@ -1,0 +1,188 @@
+
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Upload App</title>
+<style>
+body {
+  font-family: 'Arial', sans-serif;
+  margin: 20px;
+  background-color: #f0f0f0;
+}
+
+h1 {
+  color: #333;
+  text-align: center;
+}
+
+form {
+  max-width: 500px;
+  margin: 20px auto;
+  background-color: #fff;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+}
+
+input[type="file"] {
+  display: block;
+  margin: 15px 0;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  width: 100%;
+}
+
+button {
+  background-color: #4caf50;
+  color: white;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  width: 100%;
+  font-size: 18px;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: #45a049;
+}
+
+#response {
+  margin-top: 30px;
+  padding: 15px;
+  background-color: #e0e0e0;
+  border-radius: 6px;
+  font-size: 18px;
+  color: #333;
+}
+
+
+
+</style>
+  </head>
+  <body>
+    <h1>File Upload App</h1>
+    
+    <form id="uploadForm" enctype="multipart/form-data">
+      <input type="file" name="file" id="fileInput" />
+      <button type="button" onclick="uploadFile()">Upload</button>
+    </form>
+  
+    <div id="response"></div>
+  
+    <h2>Uploaded Files</h2>
+    <ul id="fileList"></ul>
+  
+    <script>
+      async function uploadFile() {
+        const fileInput = document.getElementById('fileInput');
+        const file = fileInput.files[0];
+  
+        if (!file) {
+          alert('Please choose a file to upload.');
+          return;
+        }
+  
+        const formData = new FormData();
+        formData.append('file', file);
+  
+        try {
+          const response = await fetch('/upload', {
+            method: 'POST',
+            body: formData,
+          });
+  
+          const result = await response.text();
+          document.getElementById('response').innerText = result;
+  
+          // Refresh the file list
+          displayFileList();
+        } catch (error) {
+          console.error('Error uploading file:', error.message);
+          document.getElementById('response').innerText = 'Error uploading file.';
+        }
+      }
+  
+      async function displayFileList() {
+        try {
+          const response = await fetch('/files');
+          const files = await response.json();
+  
+          const fileList = document.getElementById('fileList');
+          fileList.innerHTML = '';
+  
+          files.forEach(file => {
+            const listItem = document.createElement('li');
+  
+            // Create a button for downloading
+            const downloadButton = document.createElement('button');
+            downloadButton.innerText = 'Download';
+            downloadButton.onclick = () => downloadFile(file._id);
+            listItem.appendChild(downloadButton);
+  
+            // Create a link for viewing
+            const viewLink = document.createElement('a');
+            viewLink.href = '#'; // Set a placeholder href
+            viewLink.innerText = file.name;
+            viewLink.onclick = () => viewFileContent(file._id);
+            listItem.appendChild(viewLink);
+  
+            fileList.appendChild(listItem);
+          });
+        } catch (error) {
+          console.error('Error fetching file list:', error.message);
+        }
+      }
+  
+      async function downloadFile(fileId) {
+        try {
+          const response = await fetch(`/files/${fileId}`);
+          const content = await response.text();
+  
+          // Create a blob from the file content
+          const blob = new Blob([content], { type: 'text/plain' });
+  
+          // Create a temporary link element and trigger a click to download
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = 'file.txt'; // You can customize the default filename
+          link.click();
+        } catch (error) {
+          console.error('Error downloading file:', error.message);
+        }
+      }
+      async function viewFileContent(fileId) {
+      try {
+        const response = await fetch(`/files/${fileId}`);
+        const readableStream = response.body;
+        const reader = readableStream.getReader();
+        let content = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+
+          if (done) {
+            break;
+          }
+
+          content += new TextDecoder().decode(value);
+        }
+
+        // Display the file content in a new window or tab
+        const newWindow = window.open('', '_blank');
+        newWindow.document.write('<pre>' + content + '</pre>');
+      } catch (error) {
+        console.error('Error viewing file content:', error.message);
+      }
+    }
+
+    // Initial display of file list
+    displayFileList();
+    </script>
+  </body>
+  </html>
+  
